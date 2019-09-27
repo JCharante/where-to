@@ -13,6 +13,9 @@
   "dependencies": {
     "@quasar/extras": "^1.0.0",
     "axios": "^0.18.1",
+    "d3": "^5.12.0",
+    "d3-delaunay": "^5.1.5",
+    "d3-geo-voronoi": "^1.6.0",
     "quasar": "^1.0.0"
   },
   "devDependencies": {

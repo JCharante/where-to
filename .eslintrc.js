@@ -58,6 +58,8 @@ module.exports = {
     'no-underscore-dangle': 'off',
     'arrow-body-style': 'off',
     'object-curly-newline': 'off',
+    'comma-dangle': 'warn',
+    'no-unreachable': 'warn',
 
     // allow console.log during development only
     'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'off',
