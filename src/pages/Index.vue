@@ -96,6 +96,9 @@
                 <q-card-section>
                     <span class="text-weight-bold">The Controls</span>. There are two sliders which can be used to rotate the spherical projection along the two axis. You can also use your keyboard arrows, WASD, or IJKL to change the tilt values. You can modify how much the sphere rotates by in a text input below. To enter cities, start to type the name of the capital city and there will be options suggested. Click on one of the suggestions and press enter, or click the add button to add them to the list. To remove them from the list, simply click the trash icon next to the city name on the right.
                 </q-card-section>
+                <q-card-section>
+                    <q-toggle label="Don't show me again" v-model="dontShowMeAgain" style="padding-top: 20px;"></q-toggle>
+                </q-card-section>
             </q-card>
         </q-dialog>
     </q-page>
@@ -124,6 +127,7 @@
                 vertical: -30,
                 arrowStep: 5,
                 showHelp: true,
+                dontShowMeAgain: false,
             };
         },
         mounted() {
@@ -156,8 +160,28 @@
                     }
                 }
             });
+
+            const stored = localStorage.getItem('dontShowMeAgain');
+            if (stored) {
+                console.log("Something stored");
+                this.showHelp = stored === 'false';
+                this.dontShowMeAgain = stored === 'true';
+            } else {
+                console.log("nothing stored");
+                localStorage.setItem('dontShowMeAgain', false);
+            }
+            console.log(stored);
+        },
+        watch: {
+            dontShowMeAgain() {
+                localStorage.setItem('dontShowMeAgain', this.dontShowMeAgain);
+            },
         },
         methods: {
+            changeToggle() {
+                console.log("ct");
+                console.log(this.dontShowMeAgain);
+            },
             filterFn(val, update, abort) {
                 const self = this;
                 if (val.length < 2) {
