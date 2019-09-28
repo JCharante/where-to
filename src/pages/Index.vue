@@ -47,7 +47,11 @@
                     </div>
                     <div class="row">
                         <q-field borderless label="Rotate Per Press">
-                            <q-input type="number" v-model.number="arrowStep" :min="0" :max="100"/>
+                            <q-input type="number" v-model.number="arrowStep" :min="0"/>
+                        </q-field>
+                        <span class="col"/>
+                        <q-field borderless>
+                            <q-btn @click="showHelp = true" label="Help Dialog" color="green"/>
                         </q-field>
                     </div>
                 </div>
