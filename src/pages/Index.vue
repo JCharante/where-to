@@ -23,14 +23,18 @@
                   </template>
               </q-select>
               <q-btn @click="addSelection" label="Add"/>
-              <q-btn @click="generateVoronoi" label="Generate"/>
+              <q-btn @click="generateOther" label="Generate"/>
+          </div>
+          <div>
+              <q-slider v-model="horizontal" :min="0" :max="360" @input="generateOther"/>
+              <q-slider v-model="vertical" :min="-90" :max="90" @input="generateOther"/>
           </div>
           <div>
               <p>Selections:</p>
               <p v-for="cityName in cities" :key="cityName">{{ generateDisplayStringForCity(cityName) }}</p>
           </div>
           <div>
-              <svg width="960" height="600"></svg>
+              <canvas id="canvas" height="450" width="900"></canvas>
           </div>
       </div>
   </q-page>
@@ -52,28 +56,30 @@
 </style>
 
 <script>
-    import geodata from 'assets/cities.json';
     import { geoVoronoi } from "d3-geo-voronoi";
+    import capitals from 'assets/capitals.json';
 
     const d3 = require('d3');
 
     export default {
         name: 'PageIndex',
-        mounted() {
-            console.log(geodata);
-        },
         computed: {
             stringOptions() {
-                return this.geodata.features.map((feat) => { return feat.properties.NAME; }).filter(v => v);
+                return this.capitals.features.map((feat) => { return feat.properties.city; }).filter(v => v);
             },
         },
         data() {
             return {
-                cities: ['HA NOI'],
+                cities: ['Washington, DC'],
+                capitals,
                 currentSelection: '',
-                geodata,
                 options: [],
+                horizontal: 0,
+                vertical: -30,
             };
+        },
+        mounted() {
+            this.generateOther();
         },
         methods: {
             filterFn(val, update, abort) {
@@ -95,17 +101,57 @@
                     this.cities.push(this.currentSelection);
                     this.currentSelection = "";
                 }
+                this.generateOther();
             },
             findCityByName(name) {
-                return this.geodata.features.filter(v => v.properties.NAME === name)[0];
+                return this.capitals.features.filter(v => v.properties.city === name)[0];
             },
             generateDisplayStringForCity(name) {
                 const info = this.findCityByName(name);
                 if (info) {
-                    return `${name} at ${info.geometry.coordinates[0][0][0]},${info.geometry.coordinates[0][0][1]}`;
+                    return `${name} at ${info.geometry.coordinates[0]},${info.geometry.coordinates[1]}`;
                 } else {
                     return name;
                 }
+            },
+            generateOther() {
+                console.log('generateOther');
+                const self = this;
+                const points = d3.range(this.cities.length).map((i) => {
+                    return self.findCityByName(self.cities[i]).geometry.coordinates;
+                });
+                const mesh = geoVoronoi(points).cellMesh();
+                const phi = (1 + Math.sqrt(5)) / 2;
+                const graticule = d3.geoGraticule10();
+                const sphere = ({ type: "Sphere" });
+                const width = 900;
+                const height = 450;
+                const projection = d3.geoOrthographic()
+                    .fitExtent([[1, 1], [width - 1, height - 1]], sphere)
+                    .rotate([self.horizontal, self.vertical]);
+                const canvas = document.getElementById('canvas');
+                const context = document.getElementById('canvas').getContext("2d");
+                context.clearRect(0, 0, width, height);
+                const path = d3.geoPath(projection, context).pointRadius(2.5);
+                context.beginPath();
+                path(graticule);
+                context.lineWidth = 1;
+                context.strokeStyle = "#ccc";
+                context.stroke();
+
+                context.beginPath();
+                path(sphere);
+                context.strokeStyle = "#000";
+                context.stroke();
+
+                context.beginPath();
+                path(mesh);
+                context.stroke();
+
+                context.beginPath();
+                path({ type: "MultiPoint", coordinates: points });
+                context.fillStyle = "#f00";
+                context.fill();
             },
             generateVoronoi() {
                 console.log('generating voronoi');
@@ -116,7 +162,7 @@
                     features: d3.range(this.cities.length).map((i) => {
                         return {
                             type: "Point",
-                            coordinates: self.findCityByName(self.cities[i]).geometry.coordinates[0][0],
+                            coordinates: self.findCityByName(self.cities[i]).geometry.coordinates,
                         };
                     }),
                 };
@@ -125,7 +171,6 @@
                 // eslint-disable-next-line prefer-const
                 const projection = d3.geoOrthographic();
                 const path = d3.geoPath().projection(projection);
-                console.log(v.polygons().features);
                 const svg = d3.select("svg");
                 svg.selectAll("*").remove();
                 svg.append('path')
