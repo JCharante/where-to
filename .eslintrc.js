@@ -60,6 +60,7 @@ module.exports = {
     'object-curly-newline': 'off',
     'comma-dangle': 'warn',
     'no-unreachable': 'warn',
+    'func-names': 'off',
 
     // allow console.log during development only
     'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'off',

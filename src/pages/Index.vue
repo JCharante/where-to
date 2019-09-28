@@ -1,43 +1,64 @@
 <template>
-  <q-page class="flex flex-center">
-      <div class="q-pa-md">
-          <div class="q-gutter-md row">
-              <q-select
-                  filled
-                  v-model="currentSelection"
-                  use-input
-                  hide-selected
-                  fill-input
-                  input-debounce="0"
-                  :options="options"
-                  @filter="filterFn"
-                  hint="Mininum 2 characters to trigger autocomplete"
-                  style="width: 250px; padding-bottom: 32px"
-              >
-                  <template v-slot:no-option>
-                      <q-item>
-                          <q-item-section class="text-grey">
-                              No results
-                          </q-item-section>
-                      </q-item>
-                  </template>
-              </q-select>
-              <q-btn @click="addSelection" label="Add"/>
-              <q-btn @click="generateOther" label="Generate"/>
-          </div>
-          <div>
-              <q-slider v-model="horizontal" :min="0" :max="360" @input="generateOther"/>
-              <q-slider v-model="vertical" :min="-90" :max="90" @input="generateOther"/>
-          </div>
-          <div>
-              <p>Selections:</p>
-              <p v-for="cityName in cities" :key="cityName">{{ generateDisplayStringForCity(cityName) }}</p>
-          </div>
-          <div>
-              <canvas id="canvas" height="450" width="900"></canvas>
-          </div>
-      </div>
-  </q-page>
+    <q-page class="flex flex-center">
+        <div class="q-pa-md">
+            <div>
+                <canvas id="canvas" height="450" width="900"></canvas>
+            </div>
+            <div class="row">
+                <q-field label="Horizontal Rotation" class="col-md-5">
+                    <q-slider v-model="horizontal" :min="0" :max="360" @input="generateOther"/>
+                </q-field>
+                <span class="col"/>
+                <q-field label="Vertical Rotation" class="col-md-5">
+                    <q-slider v-model="vertical" :min="-90" :max="90" @input="generateOther"/>
+                </q-field>
+            </div>
+            <div class="q-gutter-md row">
+                <div class="col-md-5">
+                    <q-select
+                        filled
+                        v-model="currentSelection"
+                        use-input
+                        hide-selected
+                        fill-input
+                        input-debounce="0"
+                        :options="options"
+                        @filter="filterFn"
+                        hint="Mininum 2 characters to trigger autocomplete"
+                        style="width: 250px; padding-bottom: 32px"
+                    >
+                        <template v-slot:no-option>
+                            <q-item>
+                                <q-item-section class="text-grey">
+                                    No results
+                                </q-item-section>
+                            </q-item>
+                        </template>
+                    </q-select>
+                    <q-btn @click="addSelection" label="Add"/>
+                </div>
+                <span class="col"/>
+                <div class="col-md-5">
+                    <q-toolbar class="bg-primary text-white shadow-2">
+                        <q-toolbar-title>Displayed Cities</q-toolbar-title>
+                    </q-toolbar>
+                    <q-list separator bordered>
+                        <q-item v-for="cityName in cities" :key="cityName">
+                            <q-item-section>
+                                <q-item-label>{{ cityName }}, {{ findCityByName(cityName).properties.country }}</q-item-label>
+                                <q-item-label caption>Latitude: {{ findCityByName(cityName).geometry.coordinates[0] }}, Longitude: {{ findCityByName(cityName).geometry.coordinates[1] }}</q-item-label>
+                            </q-item-section>
+                        </q-item>
+                    </q-list>
+                </div>
+            </div>
+            <hr>
+            <div>
+                <p>DISCLAIMER:</p>
+                <p>This project is not aiming to make political statements with the cities that are listed. The dataset comes from https://github.com/Stefie/geojson-world</p>
+            </div>
+        </div>
+    </q-page>
 </template>
 
 <style>
@@ -76,10 +97,31 @@
                 options: [],
                 horizontal: 0,
                 vertical: -30,
+                arrowStep: 5,
             };
         },
         mounted() {
             this.generateOther();
+            const self = this;
+            document.addEventListener('keydown', (e) => {
+                if (e.keyCode === 38) {
+                    // up arrow
+                    self.vertical -= self.arrowStep;
+                    self.generateOther();
+                } else if (e.keyCode === 40) {
+                    // down arrow
+                    self.vertical += self.arrowStep;
+                    self.generateOther();
+                } else if (e.keyCode === 37) {
+                    // left arrow
+                    self.horizontal += self.arrowStep;
+                    self.generateOther();
+                } else if (e.keyCode === 39) {
+                    // right arrow
+                    self.horizontal -= self.arrowStep;
+                    self.generateOther();
+                }
+            });
         },
         methods: {
             filterFn(val, update, abort) {
@@ -115,7 +157,7 @@
                 }
             },
             generateOther() {
-                console.log('generateOther');
+                // console.log('generateOther');
                 const self = this;
                 const points = d3.range(this.cities.length).map((i) => {
                     return self.findCityByName(self.cities[i]).geometry.coordinates;
@@ -152,64 +194,6 @@
                 path({ type: "MultiPoint", coordinates: points });
                 context.fillStyle = "#f00";
                 context.fill();
-            },
-            generateVoronoi() {
-                console.log('generating voronoi');
-                const self = this;
-                const points = {
-                    type: "FeatureCollection",
-                    // eslint-disable-next-line func-names
-                    features: d3.range(this.cities.length).map((i) => {
-                        return {
-                            type: "Point",
-                            coordinates: self.findCityByName(self.cities[i]).geometry.coordinates,
-                        };
-                    }),
-                };
-
-                const v = geoVoronoi()(points);
-                // eslint-disable-next-line prefer-const
-                const projection = d3.geoOrthographic();
-                const path = d3.geoPath().projection(projection);
-                const svg = d3.select("svg");
-                svg.selectAll("*").remove();
-                svg.append('path')
-                    .attr('id', 'sphere')
-                    .datum({ type: "Sphere" })
-                    .attr('d', path);
-                svg.append('g')
-                    .attr('class', 'polygons')
-                    .selectAll('path')
-                    .data(v.polygons().features)
-                    .enter()
-                    .append('path')
-                    .attr('d', path)
-                    .attr('fill', (_, i) => { return d3.schemeCategory10[i % 10]; });
-                svg.append('g')
-                    .attr('class', 'sites')
-                    .selectAll('path')
-                    .data(points.features)
-                    .enter()
-                    .append('path')
-                    .attr('d', path)
-                    .attr('id', (_, i) => { return `path${i}`; });
-                this.cities
-                    .map((cityName) => { return this.findCityByName(cityName); })
-                    .forEach((city, index) => {
-                        svg.append('use').attr('href', `#path${index}`).attr('fill', 'none').attr('stroke', 'red');
-                        svg.append('text').attr('font-size', 25).attr('fill', 'blue')
-                            .insert('textPath')
-                            .attr('href', `#path${index}`)
-                            .attr('text-anchor', 'right')
-                            .text(city.properties.NAME);
-                    });
-                // gentle animation
-                const SPEED_QUOTIENT = 15; // less is faster
-                d3.interval((elapsed) => {
-                    projection.rotate([elapsed / SPEED_QUOTIENT, 0]);
-                    svg.selectAll('path')
-                        .attr('d', path);
-                }, 50);
             },
         },
     };
